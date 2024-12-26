@@ -1,5 +1,5 @@
 name: SCP files From Actions To EC2
-on: [push]
+on: workflow_dispatch
 jobs:
   build:
     name: Build
