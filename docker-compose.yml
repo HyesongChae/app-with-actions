@@ -7,7 +7,7 @@ services:
   db:
 	 # platform : linux/arm64
   ## 컨테이너명
-    container_name: mysql-server
+    container_name: db-server
   ## 사용 이미지
     image: mysql:latest
   ## 호스트-컨테이너 매핑 포트
