@@ -1,0 +1,71 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Artifact workflow-01
+on : workflow_dispatch
+#on:
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+
+    - name: Naming jar file
+      run: mv ./target/*.jar ./target/app.jar
+
+    - name: Check jar file
+      run: ls ./target
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: app.jar
+        path: ./target/*.jar
+
+  deploy :
+    needs : [build]
+    runs-on : ubuntu-latest
+    steps :
+      - name: From Github Actions to AWS EC2 through SCP
+        uses: appleboy/scp-action@v0.1.7
+        with: 
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: app.jar
+          target: /home/ubuntu/app
+  
+      - name: Connecting EC2 through SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+             rm -rf /home/ubuntu/app/deploy
+             mkdir /home/ubuntu/app/deploy
+             mv /home/ubuntu/app/app.jar /home/ubuntu/app/deploy/app.jar
+             cd /home/ubuntu/app/deploy
+             sudo fuser -k -n tcp 8080 || true
+             nohup java -jar app.jar > ./output.log 2>&1 &
+             rm -rf /home/ubuntu/app
