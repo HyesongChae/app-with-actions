@@ -1,7 +1,7 @@
 name: Github Actions with Docker Compose
 
 on:
-  workflow_dispatch
+  push
 
 jobs:
   ci:
