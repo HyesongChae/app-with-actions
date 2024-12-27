@@ -64,6 +64,7 @@ jobs:
           sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
           sudo docker stop $(sudo docker ps -qa)
           sudo docker rm $(sudo docker ps -qa)
+          sudo fuser -k 8080/tcp
           sudo docker run -d -p 8080:8080 \
             -e TZ=Asia/Seoul \
             ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
