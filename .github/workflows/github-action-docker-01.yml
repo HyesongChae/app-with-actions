@@ -48,3 +48,38 @@ jobs:
         context: .
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
+  
+	cd:
+	  needs: ci
+	  runs-on: ubuntu-latest
+	
+	  steps:
+	    # SSH를 사용해 EC2에 배포 스크립트 실행
+	    - name: Pull and run Docker image on EC2
+	      uses: appleboy/ssh-action@v1.2.0
+	      with:
+	        host: ${{ secrets.EC2_HOST }}
+	        username: ${{ secrets.EC2_USERNAME }}
+	        key: ${{ secrets.EC2_PRIVATE_KEY }}
+	        script: |
+            # Docker가 설치되어 있는지 확인 (없으면 설치)
+            if ! [ -x "$(command -v docker)" ]; then
+                echo "Docker가 설치되어 있지 않습니다. 설치를 진행합니다..."
+                
+                # 패키지 목록 업데이트
+                sudo apt update
+                
+                # Docker 설치 방법 1: apt 패키지
+                sudo apt install -y docker.io
+            fi
+            
+	          # Docker 이미지 다운로드
+	          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
+
+	          # 실행 중인 동일한 컨테이너가 있다면 종료
+	          docker stop app-container || true
+	          docker rm app-container || true
+	
+	          # Docker 컨테이너 실행
+	          docker run -d --name app-container -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
+	
