@@ -42,5 +42,6 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         script: |
+          #checkout한 repo의 root에 위치하지 않을까? 그럼 compose.yml도 있겠지?
           docker-compose down
           docker-compose up -d
