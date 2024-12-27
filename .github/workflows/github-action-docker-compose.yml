@@ -53,7 +53,7 @@ jobs:
           cd ~/app
           
           # Dockerfile과 docker-compose.yml 파일을 EC2로 복사
-          git clone https://github.com/your-username/your-repository.git .
+          git clone ${{ APP_WITH_ACTIONS_URL }} .
 
           docker-compose down
           docker-compose up -d
