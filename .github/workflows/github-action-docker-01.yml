@@ -12,10 +12,10 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+      	java-version: '17'
         distribution: 'temurin'
         cache: maven
-        
+	
     - name: Build with Maven
       run: mvn -B package --file pom.xml
       
@@ -27,14 +27,14 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: app
-        path: ./target/*.jar
+	name: app
+	path: ./target/*.jar
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+	username: ${{ secrets.DOCKERHUB_USERNAME }}
+	password: ${{ secrets.DOCKERHUB_TOKEN }}
     
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -45,36 +45,26 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: .
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
-  
-cd:
-  needs: ci
-  runs-on: ubuntu-latest
+	context: .
+	push: true
+	tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
 
-  steps:
-    # SSH를 사용해 EC2에 배포 스크립트 실행
-    - name: Pull and run Docker image on EC2
+  cd:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Excute deployment script
       uses: appleboy/ssh-action@v1.2.0
       with:
 	host: ${{ secrets.EC2_HOST }}
 	username: ${{ secrets.EC2_USERNAME }}
 	key: ${{ secrets.EC2_PRIVATE_KEY }}
 	script: |
-	    	# Docker가 설치되어 있는지 확인 (없으면 설치)
-		if ! [ -x "$(command -v docker)" ]; then
-			sudo apt update
-			sudo apt install -y docker.io
-		fi
-		
-		# Docker 이미지 다운로드
-		docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
-		
-		# 실행 중인 동일한 컨테이너가 있다면 종료
-		docker stop app-container || true
-		docker rm app-container || true
-		
-		# Docker 컨테이너 실행
-		docker run -d --name app-container -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
+	    sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
+	    docker stop $(sudo docker ps -qa)
+	    docker rm $(sudo docker ps -qa)
+            sudo docker run -d -p 8080:8080 \
+	    -e TZ=Asiz/Seoul \
+	     ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
 
