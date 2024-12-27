@@ -1,4 +1,4 @@
-name: Github Actions with Docker Compose
+name: App With Github Actions with docker-compose CI/CD
 
 on:
   push
@@ -9,17 +9,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Create properties file
-      run: echo "${{ secrets.MY_PROPERTIES }}" > src/main/resources/application.properties
-    
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
-        
+    - name: Make application-prod.properties
+      run: |
+        cd ./src/main/resources
+        touch ./application.properties
+        echo "${{ secrets.PROPERTIES }}" > ./application.properties
+      shell: bash
+      
     - name: Build with Maven
       run: mvn -B package --file pom.xml
       
@@ -32,61 +34,39 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: app
-        path: ./target/*.jar    
-        
-    - uses: actions/upload-artifact@v4
+        path: ./target/*.jar
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
       with:
-        name: Dockerfile
-        path: .
-        
-    - uses: actions/upload-artifact@v4
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build and push
+      uses: docker/build-push-action@v6
       with:
-        name: docker-compose.yml
-        path: .
-  
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions:latest
   cd:
     needs: ci
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Download the app artifact
-      uses: actions/download-artifact@v2
+    - name: Execute deployment script
+      uses: appleboy/ssh-action@v1.2.0
       with:
-        name: app  # The artifact name matches the one used in the 'upload-artifact' step
-    
-    - name: Download the app artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: Dockerfile
-        
-    - name: Download the app artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: docker-compose.yml
-        
-    # - name: Execute deployment script
-    #   uses: appleboy/ssh-action@v1.2.0
-    #   with:
-    #     host: ${{ secrets.EC2_HOST }}
-    #     username: ${{ secrets.EC2_USERNAME }}
-    #     key: ${{ secrets.EC2_PRIVATE_KEY }}
-    #     script: |
-    #       # 1. git에서 EC2로 docker-compose.yml과 Dockerfile을 다운로드
-    #       mkdir -p ~/app
-    #       cd ~/app
-          
-    #       # Dockerfile과 docker-compose.yml 파일을 EC2로 복사
-    #       git clone ${{ secrets.APP_WITH_ACTIONS_URL }} ./app
-          
-    #       # 2. app.jar 파일을 EC2에 복사
-    #       mv ~/actions-runner/_work/${{ .repository }}/*/target/app.jar ~/app/target/app.jar
-
-    #       # 3. docker-compose 명령어 실행
-    #       docker-compose down
-    #       docker-compose up -d
-    #       git clone ${{ secrets.APP_WITH_ACTIONS_URL }} ./app
-
-    #       docker-compose down
-    #       docker-compose up -d
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_PRIVATE_KEY }}
+        script: |
+            cd
+            sudo docker-compose down
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-with-actions
+            sudo docker-compose up -d
+            sudo docker image prune -a -f
