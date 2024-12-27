@@ -39,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/checkout@v4
+    
     - name: Execute deployment script
       uses: appleboy/ssh-action@v1.2.0
       with:
@@ -46,6 +48,12 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         script: |
-          #checkout한 repo의 root에 위치하지 않을까? 그럼 compose.yml도 있겠지?
+          # 1. git에서 EC2로 docker-compose.yml과 Dockerfile을 다운로드
+          mkdir -p ~/app
+          cd ~/app
+          
+          # Dockerfile과 docker-compose.yml 파일을 EC2로 복사
+          git clone https://github.com/your-username/your-repository.git .
+
           docker-compose down
           docker-compose up -d
