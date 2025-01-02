@@ -9,7 +9,7 @@ env:
   ECR_REPOSITORY: app-with-ecs
   ECS_SERVICE: first-ecs-service-01
   ECS_CLUSTER: first-ecs-cluster-01
-  CONTAINER_NAME: first-ecs-container-01
+  CONTAINER_NAME: ecs-first-container
   
 jobs:
   build-deploy:
